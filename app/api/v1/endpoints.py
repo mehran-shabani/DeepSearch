@@ -1,7 +1,6 @@
 """
 API endpoints for search and ingestion.
 """
-from typing import List
 
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
@@ -53,7 +52,7 @@ async def search(request: SearchRequest, db: Session = Depends(get_db)):
         doc_map = {doc.id: doc for doc in documents}
 
         # Build results in order of relevance
-        results: List[SearchResult] = []
+        results: list[SearchResult] = []
         for doc_id, score in zip(doc_ids, scores):
             if doc_id in doc_map:
                 doc = doc_map[doc_id]

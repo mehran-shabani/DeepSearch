@@ -1,9 +1,8 @@
 """
 Faiss index management for vector similarity search.
 """
-import os
+
 from pathlib import Path
-from typing import List, Tuple
 
 import faiss
 import numpy as np
@@ -19,7 +18,7 @@ class FaissIndexManager:
         self.index: faiss.Index = None
         self.dimension = settings.embedding_dimensions
         self.index_path = settings.faiss_index_path
-        self.doc_ids: List[int] = []  # Maps index position to document ID
+        self.doc_ids: list[int] = []  # Maps index position to document ID
 
     def load_or_create_index(self) -> faiss.Index:
         """
@@ -58,7 +57,7 @@ class FaissIndexManager:
         doc_ids_file = index_file.with_suffix(".ids.npy")
         np.save(str(doc_ids_file), np.array(self.doc_ids))
 
-    def add_vectors(self, vectors: np.ndarray, doc_ids: List[int]) -> None:
+    def add_vectors(self, vectors: np.ndarray, doc_ids: list[int]) -> None:
         """
         Add vectors to the index.
 
@@ -73,8 +72,8 @@ class FaissIndexManager:
         self.save_index()
 
     async def search(
-        self, query_vector: List[float], top_k: int = 5
-    ) -> Tuple[List[float], List[int]]:
+        self, query_vector: list[float], top_k: int = 5
+    ) -> tuple[list[float], list[int]]:
         """
         Search for similar vectors in the index.
 

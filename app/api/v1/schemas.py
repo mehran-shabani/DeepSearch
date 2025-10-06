@@ -1,7 +1,8 @@
 """
 Pydantic schemas for API request/response models.
 """
-from typing import Any, Optional
+
+from typing import Any
 
 from pydantic import BaseModel, Field
 
@@ -11,7 +12,7 @@ class SearchRequest(BaseModel):
 
     query: str = Field(..., description="Search query text", min_length=1)
     top_k: int = Field(default=5, description="Number of results to return", ge=1, le=100)
-    filter: Optional[dict[str, Any]] = Field(default=None, description="Optional metadata filter")
+    filter: dict[str, Any] | None = Field(default=None, description="Optional metadata filter")
 
 
 class SearchResult(BaseModel):

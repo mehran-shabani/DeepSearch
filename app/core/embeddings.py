@@ -1,8 +1,8 @@
 """
 Embedding generation using OpenAI API.
 """
+
 import asyncio
-from typing import List
 
 from openai import AsyncOpenAI
 
@@ -15,7 +15,7 @@ client = AsyncOpenAI(
 )
 
 
-async def embed(text: str) -> List[float]:
+async def embed(text: str) -> list[float]:
     """
     Generate embedding vector for given text using OpenAI API.
 
@@ -32,7 +32,7 @@ async def embed(text: str) -> List[float]:
     return response.data[0].embedding
 
 
-async def embed_batch(texts: List[str]) -> List[List[float]]:
+async def embed_batch(texts: list[str]) -> list[list[float]]:
     """
     Generate embeddings for multiple texts in batch.
 

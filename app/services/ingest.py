@@ -1,6 +1,7 @@
 """
 Document ingestion service.
 """
+
 import numpy as np
 from sqlalchemy.orm import Session
 
@@ -9,9 +10,7 @@ from app.models.document import Document
 from app.services.faiss_index import index_manager
 
 
-async def ingest_document(
-    content: str, doc_metadata: dict, db: Session
-) -> Document:
+async def ingest_document(content: str, doc_metadata: dict, db: Session) -> Document:
     """
     Ingest a document: generate embedding, store in DB, and add to Faiss index.
 

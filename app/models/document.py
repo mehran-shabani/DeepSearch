@@ -1,8 +1,8 @@
 """
 SQLAlchemy document model.
 """
+
 from datetime import datetime
-from typing import Any
 
 from sqlalchemy import JSON, Column, DateTime, Integer, Text, create_engine
 from sqlalchemy.orm import declarative_base, sessionmaker
@@ -21,9 +21,7 @@ class Document(Base):
     content = Column(Text, nullable=False, index=True)
     doc_metadata = Column(JSON, default={}, nullable=False)
     created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
-    updated_at = Column(
-        DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, nullable=False
-    )
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, nullable=False)
 
     def __repr__(self) -> str:
         """String representation of document."""
