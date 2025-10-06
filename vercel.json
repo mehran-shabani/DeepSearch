@@ -1,13 +1,4 @@
 {
-  "version": 2,
-  "builds": [
-    {
-      "src": "deep-search-ui/package.json",
-      "use": "@vercel/static-build",
-      "config": { "distDir": "deep-search-ui/dist" }
-    }
-  ],
-  "routes": [
-    { "src": "/(.*)", "dest": "deep-search-ui/dist/index.html" }
-  ]
+  "buildCommand": "cd deep-search-ui && npm run build",
+  "outputDirectory": "deep-search-ui/dist"
 }
