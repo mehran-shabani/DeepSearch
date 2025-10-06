@@ -1,0 +1,88 @@
+# پیکربندی Pre-commit برای Deep Search
+# نصب: pre-commit install
+# اجرا دستی: pre-commit run --all-files
+
+repos:
+  # Ruff - لینتر و فرمتر سریع Python
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    rev: v0.3.4
+    hooks:
+      # فرمت‌کننده Ruff (جایگزین Black)
+      - id: ruff-format
+        name: Ruff Format (Python)
+        types: [python]
+      
+      # لینتر Ruff
+      - id: ruff
+        name: Ruff Lint (Python)
+        types: [python]
+        args: [--fix, --exit-non-zero-on-fix]
+
+  # Black - فرمت‌کننده کد Python
+  - repo: https://github.com/psf/black
+    rev: 24.3.0
+    hooks:
+      - id: black
+        name: Black (Python Formatter)
+        language_version: python3.12
+        types: [python]
+
+  # Prettier - فرمت‌کننده JavaScript/TypeScript/CSS
+  - repo: https://github.com/pre-commit/mirrors-prettier
+    rev: v4.0.0-alpha.8
+    hooks:
+      - id: prettier
+        name: Prettier (JS/TS/CSS/JSON)
+        types_or: [javascript, jsx, ts, tsx, css, json, markdown, yaml]
+        additional_dependencies:
+          - prettier@3.2.5
+          - prettier-plugin-tailwindcss@0.5.11
+        args: [--plugin=prettier-plugin-tailwindcss]
+        files: ^deep-search-ui/
+
+  # هوک‌های عمومی pre-commit
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v4.5.0
+    hooks:
+      - id: trailing-whitespace
+        name: حذف فضاهای خالی انتهای خط
+      
+      - id: end-of-file-fixer
+        name: اصلاح خط پایانی فایل
+      
+      - id: check-yaml
+        name: بررسی صحت YAML
+      
+      - id: check-json
+        name: بررسی صحت JSON
+      
+      - id: check-added-large-files
+        name: جلوگیری از فایل‌های بزرگ
+        args: [--maxkb=1000]
+      
+      - id: check-merge-conflict
+        name: بررسی تضاد merge
+      
+      - id: mixed-line-ending
+        name: بررسی line ending
+
+# تنظیمات اضافی
+default_language_version:
+  python: python3.12
+  node: '20'
+
+# فایل‌های نادیده گرفته شده
+exclude: |
+  (?x)^(
+      \.git/|
+      \.venv/|
+      venv/|
+      node_modules/|
+      dist/|
+      build/|
+      __pycache__/|
+      \.pytest_cache/|
+      \.mypy_cache/|
+      \.ruff_cache/|
+      data/
+  )$
