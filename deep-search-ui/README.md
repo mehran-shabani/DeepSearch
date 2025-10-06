@@ -71,3 +71,11 @@ export default defineConfig([
   },
 ])
 ```
+
+## 🚀 Deploy on Vercel
+
+1. ورود به داشبورد Vercel و import repo
+2. در قسمت **Framework Preset** گزینه «Other / static» یا «Vite»
+3. **Root Directory** = `deep-search-ui`
+4. **Build Command** = `npm run build` و **Output Dir** = `dist`
+5. متغیّر محیطی `VITE_API` را برابر دامنهٔ بک‌اند (مثلاً `https://api.myapp.com`) قرار بده.
