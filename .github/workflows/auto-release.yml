@@ -1,0 +1,122 @@
+name: Auto Release & Tag
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  version-bump:
+    runs-on: ubuntu-latest
+    outputs:
+      new_tag: ${{ steps.calc_version.outputs.new_tag }}
+      prev_tag: ${{ steps.calc_version.outputs.prev_tag }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+        with:
+          fetch-depth: 0
+
+      - name: Fetch all tags
+        run: git fetch --tags
+
+      - name: Calculate new version
+        id: calc_version
+        run: |
+          # Get the latest tag (sorted by version)
+          LATEST_TAG=$(git tag --sort=-v:refname | head -n 1)
+          
+          if [ -z "$LATEST_TAG" ]; then
+            # No tags exist, start with v1.0.0
+            NEW_TAG="v1.0.0"
+            PREV_TAG=""
+          else
+            # Extract version parts (remove 'v' prefix)
+            VERSION=${LATEST_TAG#v}
+            MAJOR=$(echo $VERSION | cut -d. -f1)
+            MINOR=$(echo $VERSION | cut -d. -f2)
+            PATCH=$(echo $VERSION | cut -d. -f3)
+            
+            # Increment PATCH by 1 (treating as integer)
+            PATCH=$((10#$PATCH + 1))
+            
+            # Check if PATCH reached 100 (since we format as 2 digits)
+            if [ $PATCH -ge 100 ]; then
+              MINOR=$((MINOR + 1))
+              PATCH=0
+            fi
+            
+            # Format PATCH with leading zero (2 digits)
+            PATCH=$(printf "%02d" $PATCH)
+            
+            NEW_TAG="v${MAJOR}.${MINOR}.${PATCH}"
+            PREV_TAG="$LATEST_TAG"
+          fi
+          
+          # Check if tag already exists
+          if git tag -l "$NEW_TAG" | grep -q "$NEW_TAG"; then
+            echo "❌ Tag $NEW_TAG already exists!"
+            exit 1
+          fi
+          
+          echo "Previous tag: $PREV_TAG"
+          echo "New tag: $NEW_TAG"
+          echo "new_tag=$NEW_TAG" >> $GITHUB_OUTPUT
+          echo "prev_tag=$PREV_TAG" >> $GITHUB_OUTPUT
+
+  release:
+    needs: version-bump
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+        with:
+          fetch-depth: 0
+
+      - name: Fetch all tags
+        run: git fetch --tags
+
+      - name: Create and push tag
+        env:
+          NEW_TAG: ${{ needs.version-bump.outputs.new_tag }}
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git tag -a "$NEW_TAG" -m "Release $NEW_TAG"
+          git push origin "$NEW_TAG"
+
+      - name: Generate release notes
+        id: release_notes
+        env:
+          NEW_TAG: ${{ needs.version-bump.outputs.new_tag }}
+          PREV_TAG: ${{ needs.version-bump.outputs.prev_tag }}
+        run: |
+          if [ -z "$PREV_TAG" ]; then
+            # First release - get all commits
+            CHANGELOG=$(git log --pretty=format:"• %s" | head -n 50)
+          else
+            # Get commits between previous tag and HEAD
+            CHANGELOG=$(git log ${PREV_TAG}..HEAD --pretty=format:"• %s")
+          fi
+          
+          # Prepare release body
+          echo "RELEASE_BODY<<EOF" >> $GITHUB_ENV
+          echo "## Release $NEW_TAG" >> $GITHUB_ENV
+          echo "" >> $GITHUB_ENV
+          echo "### Changes" >> $GITHUB_ENV
+          echo "$CHANGELOG" >> $GITHUB_ENV
+          echo "EOF" >> $GITHUB_ENV
+
+      - name: Create GitHub Release
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          NEW_TAG: ${{ needs.version-bump.outputs.new_tag }}
+        run: |
+          gh release create "$NEW_TAG" \
+            --title "$NEW_TAG" \
+            --notes "$RELEASE_BODY" \
+            --target main
