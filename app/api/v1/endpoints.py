@@ -62,7 +62,7 @@ async def search(request: SearchRequest, db: Session = Depends(get_db)):
                         id=doc.id,
                         content=doc.content,
                         score=float(score),
-                        metadata=doc.metadata or {},
+                        metadata=doc.doc_metadata or {},
                     )
                 )
 
@@ -91,7 +91,7 @@ async def ingest(request: IngestRequest, db: Session = Depends(get_db)):
     try:
         document = await ingest_document(
             content=request.content,
-            metadata=request.metadata,
+            doc_metadata=request.metadata,
             db=db,
         )
 
@@ -125,5 +125,5 @@ async def get_document(document_id: int, db: Session = Depends(get_db)):
         id=document.id,
         content=document.content,
         score=1.0,
-        metadata=document.metadata or {},
+        metadata=document.doc_metadata or {},
     )

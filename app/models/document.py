@@ -19,7 +19,7 @@ class Document(Base):
 
     id = Column(Integer, primary_key=True, index=True, autoincrement=True)
     content = Column(Text, nullable=False, index=True)
-    metadata = Column(JSON, default={}, nullable=False)
+    doc_metadata = Column(JSON, default={}, nullable=False)
     created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
     updated_at = Column(
         DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, nullable=False

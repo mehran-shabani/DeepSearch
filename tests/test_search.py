@@ -46,7 +46,7 @@ def test_search_endpoint_success(client, mock_embed, mock_index_manager, monkeyp
     mock_doc = MagicMock()
     mock_doc.id = 1
     mock_doc.content = "Test document content"
-    mock_doc.metadata = {"source": "test"}
+    mock_doc.doc_metadata = {"source": "test"}
     
     mock_query = MagicMock()
     mock_query.filter.return_value.all.return_value = [mock_doc]
