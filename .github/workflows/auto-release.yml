@@ -2,12 +2,15 @@ name: Auto Release & Tag
 
 on:
   push:
-    branches:
-      - main
+    branches: [ main ]
   workflow_dispatch:
 
 permissions:
   contents: write
+
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: true
 
 jobs:
   version-bump:
@@ -17,104 +20,110 @@ jobs:
       prev_tag: ${{ steps.calc_version.outputs.prev_tag }}
     steps:
       - name: Checkout code
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
         with:
           fetch-depth: 0
 
       - name: Fetch all tags
-        run: git fetch --tags
+        run: git fetch --tags --force
 
-      - name: Calculate new version
+      - name: Calculate new version (normalize & avoid collisions)
         id: calc_version
+        shell: bash
         run: |
-          # Get the latest tag (sorted by version)
-          LATEST_TAG=$(git tag --sort=-v:refname | head -n 1)
-          
-          if [ -z "$LATEST_TAG" ]; then
-            # No tags exist, start with v1.0.0
-            NEW_TAG="v1.0.0"
+          set -euo pipefail
+
+          # جمع تگ‌های شِبه-سمور؛ هم v* هم بدون v
+          ALL=$(git tag --list | sed 's/^v//' | grep -E '^[0-9]+\.[0-9]+\.[0-9]+$' | sort -V)
+          LATEST=$(echo "$ALL" | tail -n 1 || true)
+
+          if [ -z "${LATEST:-}" ]; then
+            MAJOR=1; MINOR=0; PATCH=0
             PREV_TAG=""
           else
-            # Extract version parts (remove 'v' prefix)
-            VERSION=${LATEST_TAG#v}
-            MAJOR=$(echo $VERSION | cut -d. -f1)
-            MINOR=$(echo $VERSION | cut -d. -f2)
-            PATCH=$(echo $VERSION | cut -d. -f3)
-            
-            # Increment PATCH by 1 (treating as integer)
+            MAJOR=${LATEST%%.*}
+            REST=${LATEST#*.}
+            MINOR=${REST%%.*}
+            PATCH=${REST#*.}
+            PREV_TAG="v${LATEST}"
+          fi
+
+          # پچ را یکی زیاد کن (با مبنای ده تا صفرهای ابتدای عدد اذیت نکنند)
+          PATCH=$((10#$PATCH + 1))
+
+          # اگر دوست داری دو رقمی بماند:
+          PATCH=$(printf "%02d" "$PATCH")
+
+          make_version () { echo "${MAJOR}.${MINOR}.${PATCH}"; }
+          VERSION=$(make_version)
+          NEW_TAG="v${VERSION}"
+
+          # تا وقتی هرکدوم از این‌ها هست (با v یا بی v)، پچ را بالا ببر
+          exists() {
+            git rev-parse -q --verify "refs/tags/$1" >/dev/null 2>&1
+          }
+
+          while exists "${NEW_TAG}" || exists "${VERSION}"; do
             PATCH=$((10#$PATCH + 1))
-            
-            # Check if PATCH reached 100 (since we format as 2 digits)
-            if [ $PATCH -ge 100 ]; then
-              MINOR=$((MINOR + 1))
-              PATCH=0
-            fi
-            
-            # Format PATCH with leading zero (2 digits)
-            PATCH=$(printf "%02d" $PATCH)
-            
-            NEW_TAG="v${MAJOR}.${MINOR}.${PATCH}"
-            PREV_TAG="$LATEST_TAG"
-          fi
-          
-          # Check if tag already exists
-          if git tag -l "$NEW_TAG" | grep -q "$NEW_TAG"; then
-            echo "❌ Tag $NEW_TAG already exists!"
-            exit 1
-          fi
-          
-          echo "Previous tag: $PREV_TAG"
-          echo "New tag: $NEW_TAG"
-          echo "new_tag=$NEW_TAG" >> $GITHUB_OUTPUT
-          echo "prev_tag=$PREV_TAG" >> $GITHUB_OUTPUT
+            PATCH=$(printf "%02d" "$PATCH")
+            VERSION=$(make_version)
+            NEW_TAG="v${VERSION}"
+          done
+
+          echo "Previous tag: ${PREV_TAG}"
+          echo "New tag: ${NEW_TAG}"
+
+          {
+            echo "new_tag=${NEW_TAG}"
+            echo "prev_tag=${PREV_TAG}"
+          } >> "$GITHUB_OUTPUT"
 
   release:
     needs: version-bump
     runs-on: ubuntu-latest
     steps:
       - name: Checkout code
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
         with:
           fetch-depth: 0
 
       - name: Fetch all tags
-        run: git fetch --tags
+        run: git fetch --tags --force
 
       - name: Create and push tag
         env:
           NEW_TAG: ${{ needs.version-bump.outputs.new_tag }}
         run: |
-          git config user.name "github-actions[bot]"
+          set -euo pipefail
+          git config user.name  "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          git tag -a "$NEW_TAG" -m "Release $NEW_TAG"
-          git push origin "$NEW_TAG"
+          # امن: اگر وجود داشت، خطا نده
+          git tag -a "$NEW_TAG" -m "Release $NEW_TAG" || true
+          git push origin "$NEW_TAG" || true
 
       - name: Generate release notes
         id: release_notes
         env:
-          NEW_TAG: ${{ needs.version-bump.outputs.new_tag }}
           PREV_TAG: ${{ needs.version-bump.outputs.prev_tag }}
         run: |
-          if [ -z "$PREV_TAG" ]; then
-            # First release - get all commits
-            CHANGELOG=$(git log --pretty=format:"• %s" | head -n 50)
+          if [ -z "${PREV_TAG}" ]; then
+            CHANGELOG="$(git log --pretty=format:"• %s" | head -n 50)"
           else
-            # Get commits between previous tag and HEAD
-            CHANGELOG=$(git log ${PREV_TAG}..HEAD --pretty=format:"• %s")
+            CHANGELOG="$(git log ${PREV_TAG}..HEAD --pretty=format:"• %s")"
           fi
-          
-          # Prepare release body
-          echo "RELEASE_BODY<<EOF" >> $GITHUB_ENV
-          echo "## Release $NEW_TAG" >> $GITHUB_ENV
-          echo "" >> $GITHUB_ENV
-          echo "### Changes" >> $GITHUB_ENV
-          echo "$CHANGELOG" >> $GITHUB_ENV
-          echo "EOF" >> $GITHUB_ENV
+
+          {
+            echo 'RELEASE_BODY<<EOF'
+            echo "### Changes"
+            echo "$CHANGELOG"
+            echo 'EOF'
+          } >> "$GITHUB_ENV"
 
       - name: Create GitHub Release
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           NEW_TAG: ${{ needs.version-bump.outputs.new_tag }}
+          RELEASE_BODY: ${{ env.RELEASE_BODY }}
         run: |
           gh release create "$NEW_TAG" \
             --title "$NEW_TAG" \
