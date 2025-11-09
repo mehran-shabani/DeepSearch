@@ -8,7 +8,8 @@ export default {
     extend: {
       fontFamily: {
         sans: [
-          '"Inter var"',
+          'Vazirmatn',
+          'Inter var',
           'Inter',
           'system-ui',
           'ui-sans-serif',
